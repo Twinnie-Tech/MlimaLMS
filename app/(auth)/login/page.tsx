@@ -1,3 +1,11 @@
+"use client"
+
+import { useTransition } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
+
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -9,27 +17,43 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-
-function GitHubIcon(props: React.ComponentProps<"svg">) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
-      <path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.07 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3" />
-    </svg>
-  )
-}
+import { GitHubButton } from "@/components/auth/github-button"
+import { authClient } from "@/lib/auth-client"
+import { getCallbackUrl } from "@/lib/callback-url"
 
 export default function LoginPage() {
+  const router = useRouter()
+  const [emailPending, startEmailTransition] = useTransition()
+
+  function signInWithEmail(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+
+    startEmailTransition(async () => {
+      await authClient.signIn.email({
+        email: String(formData.get("email")),
+        password: String(formData.get("password")),
+        fetchOptions: {
+          onSuccess: () => {
+            toast.success("Welcome back!")
+            router.push(getCallbackUrl())
+          },
+          onError: (ctx) => {
+            toast.error(ctx.error.message || "Invalid email or password")
+          },
+        },
+      })
+    })
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl">Welcome Back!</CardTitle>
-        <CardDescription>Login with your Github Email Account</CardDescription>
+        <CardTitle className="text-xl">Welcome back!</CardTitle>
+        <CardDescription>Log in with your GitHub or email account</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <Button variant="outline" className="w-full">
-          <GitHubIcon />
-          Sign in with GitHub
-        </Button>
+        <GitHubButton label="Sign in with GitHub" />
 
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <Separator className="flex-1" />
@@ -37,7 +61,7 @@ export default function LoginPage() {
           <Separator className="flex-1" />
         </div>
 
-        <form className="flex flex-col gap-4">
+        <form onSubmit={signInWithEmail} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -49,10 +73,34 @@ export default function LoginPage() {
               required
             />
           </div>
-          <Button type="submit" className="w-full">
-            Continue with Email
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+            />
+          </div>
+          <Button type="submit" className="w-full" disabled={emailPending}>
+            {emailPending ? (
+              <>
+                <Loader2 className="animate-spin" />
+                Logging in...
+              </>
+            ) : (
+              "Continue with Email"
+            )}
           </Button>
         </form>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="font-medium text-foreground underline-offset-4 hover:text-green-600 hover:underline">
+            Sign up
+          </Link>
+        </p>
       </CardContent>
     </Card>
   )

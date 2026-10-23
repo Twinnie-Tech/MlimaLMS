@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -15,8 +16,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MlimaLMS",
-  description: "MlimaLMS learning management system",
+  title: {
+    default: "MlimaLMS",
+    template: "%s · MlimaLMS",
+  },
+  description:
+    "MlimaLMS is a learning management system with live online classes, CBC-aligned lessons, revision papers and progress reports for learners, parents, teachers and schools.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -24,6 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
@@ -34,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           disableTransitionOnChange
         >
           <TooltipProvider>{children}</TooltipProvider>
+          <Toaster richColors closeButton />
         </ThemeProvider>
       </body>
     </html>

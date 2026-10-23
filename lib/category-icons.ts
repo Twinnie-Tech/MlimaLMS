@@ -1,0 +1,45 @@
+import {
+  Brain,
+  Briefcase,
+  Calculator,
+  Camera,
+  Code,
+  GraduationCap,
+  Languages,
+  type LucideIcon,
+  Music,
+  Palette,
+  Scale,
+  Sprout,
+  Stethoscope,
+} from "lucide-react"
+
+export const categoryIcons: Record<string, LucideIcon> = {
+  technology: Code,
+  "health-medicine": Stethoscope,
+  "accounting-finance": Calculator,
+  business: Briefcase,
+  design: Palette,
+  "photography-video": Camera,
+  agriculture: Sprout,
+  languages: Languages,
+  "music-arts": Music,
+  "personal-development": Brain,
+  law: Scale,
+  school: GraduationCap,
+}
+
+export const featuredCategories = [
+  { slug: "technology", name: "Technology & Programming", icon: "💻" },
+  { slug: "health-medicine", name: "Health & Medicine", icon: "🩺" },
+  { slug: "accounting-finance", name: "Accounting & Finance", icon: "📊" },
+  { slug: "business", name: "Business & Entrepreneurship", icon: "💼" },
+  { slug: "design", name: "Design & Creativity", icon: "🎨" },
+  { slug: "photography-video", name: "Photography & Video", icon: "📷" },
+  { slug: "agriculture", name: "Agriculture & Farming", icon: "🌱" },
+  { slug: "languages", name: "Languages", icon: "🗣️" },
+  { slug: "music-arts", name: "Music & Performing Arts", icon: "🎵" },
+  { slug: "personal-development", name: "Personal Development", icon: "🧠" },
+  { slug: "law", name: "Law & Governance", icon: "⚖️" },
+  { slug: "school", name: "School (CBC & KPSEA)", icon: "🎓" },
+]

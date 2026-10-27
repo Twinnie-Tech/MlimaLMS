@@ -6,6 +6,7 @@ import * as z from "zod"
 
 import { prisma } from "@/lib/db"
 import { slugify } from "@/lib/course-utils"
+import { protectAction } from "@/lib/arcjet"
 import { sendEmailInBackground } from "@/lib/email"
 import {
   courseCompletedEmail,
@@ -82,6 +83,8 @@ function revalidateCourse(slug: string, id: string) {
 
 export async function createCourse(_state: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser("/instructor/courses/new")
+  const blocked = await protectAction(user.id, "createCourse")
+  if (blocked) return { error: blocked }
   const parsed = parseCourse(formData)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
@@ -95,6 +98,8 @@ export async function createCourse(_state: FormState, formData: FormData): Promi
 
 export async function updateCourse(courseId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const course = await getOwnedCourse(courseId)
+  const blocked = await protectAction(course.instructorId, "update")
+  if (blocked) return { error: blocked }
   const parsed = parseCourse(formData)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
@@ -109,6 +114,8 @@ export async function updateCourse(courseId: string, _state: FormState, formData
 
 export async function addLesson(courseId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const course = await getOwnedCourse(courseId)
+  const blocked = await protectAction(course.instructorId, "addLesson")
+  if (blocked) return { error: blocked }
   const parsed = lessonSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") || undefined,
@@ -190,6 +197,8 @@ export async function enrollInCourse(courseId: string): Promise<FormState> {
   if (!course) return { error: "This course is not available" }
 
   const user = await requireUser(`/explore/${course.slug}`)
+  const blocked = await protectAction(user.id, "enroll")
+  if (blocked) return { error: blocked }
   const where = { userId_courseId: { userId: user.id, courseId: course.id } }
   const alreadyEnrolled = await prisma.enrollment.findUnique({ where })
 
@@ -279,6 +288,8 @@ const instructorProfileSchema = z.object({
 
 export async function updateInstructorProfile(_state: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser()
+  const blocked = await protectAction(user.id, "update")
+  if (blocked) return { error: blocked }
   const parsed = instructorProfileSchema.safeParse({
     headline: formData.get("headline") || undefined,
     bio: formData.get("bio") || undefined,

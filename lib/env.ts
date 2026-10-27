@@ -21,6 +21,7 @@ export const env = createEnv({
     SMTP_USER: z.string().min(1).optional(),
     SMTP_PASS: z.string().min(1).optional(),
     SMTP_FROM: z.email().optional(),
+    ARCJET_KEY: z.string().startsWith("ajkey_").optional(),
   },
   // For Next.js >= 13.4.4, you only need to destructure client variables:
   experimental__runtimeEnv: {

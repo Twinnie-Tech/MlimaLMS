@@ -1,5 +1,6 @@
 "use server"
 
+import { protectAction } from "@/lib/arcjet"
 import { createPresignedUpload, isS3Configured } from "@/lib/s3"
 import { requireUser } from "@/lib/session"
 import { formatBytes, uploadRules, type UploadKind } from "@/lib/upload-rules"
@@ -12,6 +13,8 @@ export async function createUploadUrl(
 ): Promise<UploadTarget> {
   const user = await requireUser()
   if (!isS3Configured()) return { error: "File uploads are not set up yet. Paste a link instead." }
+  const blocked = await protectAction(user.id, "upload")
+  if (blocked) return { error: blocked }
 
   const rules = uploadRules[kind]
   if (!rules) return { error: "Unsupported upload type" }

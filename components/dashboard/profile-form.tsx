@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ChangePasswordForm } from "@/components/dashboard/change-password-form"
 
 const notificationOptions = [
   { id: "weekly-report", label: "Weekly child report", description: "A summary of progress every Sunday." },
@@ -109,6 +110,8 @@ export function ProfileForm() {
           ))}
         </CardContent>
       </Card>
+
+      <ChangePasswordForm />
     </div>
   )
 }

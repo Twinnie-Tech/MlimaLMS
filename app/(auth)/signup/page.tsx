@@ -34,15 +34,17 @@ export default function SignupPage() {
       return
     }
 
+    const email = String(formData.get("email"))
+
     startSignupTransition(async () => {
       await authClient.signUp.email({
         name: String(formData.get("name")),
-        email: String(formData.get("email")),
+        email,
         password,
         fetchOptions: {
           onSuccess: () => {
-            toast.success("Account created! Welcome to MlimaLMS.")
-            router.push("/dashboard")
+            toast.success("Account created! Check your email for a verification code.")
+            router.push(`/verify-email?email=${encodeURIComponent(email)}`)
           },
           onError: (ctx) => {
             toast.error(ctx.error.message || "Could not create your account")

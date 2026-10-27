@@ -17,6 +17,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { EmailOtpSignIn } from "@/components/auth/email-otp-sign-in"
 import { GitHubButton } from "@/components/auth/github-button"
 import { authClient } from "@/lib/auth-client"
 import { getCallbackUrl } from "@/lib/callback-url"
@@ -61,39 +63,58 @@ export default function LoginPage() {
           <Separator className="flex-1" />
         </div>
 
-        <form onSubmit={signInWithEmail} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="m@example.com"
-              autoComplete="email"
-              required
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={emailPending}>
-            {emailPending ? (
-              <>
-                <Loader2 className="animate-spin" />
-                Logging in...
-              </>
-            ) : (
-              "Continue with Email"
-            )}
-          </Button>
-        </form>
+        <Tabs defaultValue="code">
+          <TabsList className="w-full">
+            <TabsTrigger value="code">Email code</TabsTrigger>
+            <TabsTrigger value="password">Password</TabsTrigger>
+          </TabsList>
+          <TabsContent value="code" className="mt-4">
+            <EmailOtpSignIn />
+          </TabsContent>
+          <TabsContent value="password" className="mt-4">
+            <form onSubmit={signInWithEmail} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-muted-foreground underline-offset-4 hover:text-green-600 hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={emailPending}>
+                {emailPending ? (
+                  <>
+                    <Loader2 className="animate-spin" />
+                    Logging in...
+                  </>
+                ) : (
+                  "Continue with Email"
+                )}
+              </Button>
+            </form>
+          </TabsContent>
+        </Tabs>
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}

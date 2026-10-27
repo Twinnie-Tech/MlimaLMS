@@ -13,6 +13,14 @@ export const env = createEnv({
     AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
     AWS_S3_BUCKET: z.string().min(1).optional(),
     AWS_S3_PUBLIC_URL: z.url().optional(),
+    EMAIL_FROM_NAME: z.string().min(1).default("MlimaLMS"),
+    RESEND_API_KEY: z.string().min(1).optional(),
+    RESEND_FROM: z.email().default("onboarding@resend.dev"),
+    SMTP_HOST: z.string().min(1).default("smtp.gmail.com"),
+    SMTP_PORT: z.coerce.number().int().default(465),
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASS: z.string().min(1).optional(),
+    SMTP_FROM: z.email().optional(),
   },
   // For Next.js >= 13.4.4, you only need to destructure client variables:
   experimental__runtimeEnv: {

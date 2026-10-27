@@ -6,6 +6,13 @@ import * as z from "zod"
 
 import { prisma } from "@/lib/db"
 import { slugify } from "@/lib/course-utils"
+import { sendEmailInBackground } from "@/lib/email"
+import {
+  courseCompletedEmail,
+  coursePublishedEmail,
+  enrollmentEmail,
+  newStudentEmail,
+} from "@/lib/emails/templates"
 import { deleteUploadedFile } from "@/lib/s3"
 import { requireUser } from "@/lib/session"
 
@@ -151,6 +158,13 @@ export async function togglePublish(courseId: string): Promise<FormState> {
 
   const status = course.status === "DRAFT" ? "PUBLISHED" : "DRAFT"
   await prisma.course.update({ where: { id: course.id }, data: { status } })
+  if (status === "PUBLISHED") {
+    const user = await requireUser()
+    sendEmailInBackground(
+      { to: user.email, ...coursePublishedEmail({ name: user.name, courseTitle: course.title, slug: course.slug }) },
+      "course published email"
+    )
+  }
   revalidateCourse(course.slug, course.id)
   return { success: status === "PUBLISHED" ? "Your course is live!" : "Course moved back to draft" }
 }
@@ -166,15 +180,52 @@ export async function deleteCourse(courseId: string) {
 }
 
 export async function enrollInCourse(courseId: string): Promise<FormState> {
-  const course = await prisma.course.findFirst({ where: { id: courseId, status: "PUBLISHED" } })
+  const course = await prisma.course.findFirst({
+    where: { id: courseId, status: "PUBLISHED" },
+    include: {
+      instructor: { select: { name: true, email: true } },
+      _count: { select: { lessons: true } },
+    },
+  })
   if (!course) return { error: "This course is not available" }
 
   const user = await requireUser(`/explore/${course.slug}`)
-  await prisma.enrollment.upsert({
-    where: { userId_courseId: { userId: user.id, courseId: course.id } },
-    update: {},
-    create: { userId: user.id, courseId: course.id },
-  })
+  const where = { userId_courseId: { userId: user.id, courseId: course.id } }
+  const alreadyEnrolled = await prisma.enrollment.findUnique({ where })
+
+  if (!alreadyEnrolled) {
+    await prisma.enrollment.create({ data: { userId: user.id, courseId: course.id } })
+    const totalStudents = await prisma.enrollment.count({ where: { courseId: course.id } })
+
+    sendEmailInBackground(
+      {
+        to: user.email,
+        ...enrollmentEmail({
+          name: user.name,
+          courseTitle: course.title,
+          instructorName: course.instructor.name,
+          lessons: course._count.lessons,
+          slug: course.slug,
+        }),
+      },
+      "enrollment email"
+    )
+    if (course.instructorId !== user.id) {
+      sendEmailInBackground(
+        {
+          to: course.instructor.email,
+          ...newStudentEmail({
+            instructorName: course.instructor.name,
+            studentName: user.name,
+            courseTitle: course.title,
+            totalStudents,
+            courseId: course.id,
+          }),
+        },
+        "new student email"
+      )
+    }
+  }
 
   revalidatePath(`/explore/${course.slug}`)
   revalidatePath("/courses")
@@ -183,7 +234,10 @@ export async function enrollInCourse(courseId: string): Promise<FormState> {
 
 export async function toggleLessonComplete(lessonId: string) {
   const user = await requireUser()
-  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, include: { course: true } })
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    include: { course: { include: { instructor: { select: { name: true } } } } },
+  })
   if (!lesson) throw new Error("Lesson not found")
 
   const where = { userId_lessonId: { userId: user.id, lessonId } }
@@ -193,6 +247,24 @@ export async function toggleLessonComplete(lessonId: string) {
     await prisma.lessonProgress.delete({ where })
   } else {
     await prisma.lessonProgress.create({ data: { userId: user.id, lessonId } })
+
+    const [total, completed] = await Promise.all([
+      prisma.lesson.count({ where: { courseId: lesson.courseId } }),
+      prisma.lessonProgress.count({ where: { userId: user.id, lesson: { courseId: lesson.courseId } } }),
+    ])
+    if (total > 0 && completed === total) {
+      sendEmailInBackground(
+        {
+          to: user.email,
+          ...courseCompletedEmail({
+            name: user.name,
+            courseTitle: lesson.course.title,
+            instructorName: lesson.course.instructor.name,
+          }),
+        },
+        "course completed email"
+      )
+    }
   }
 
   revalidatePath(`/learn/${lesson.course.slug}`)

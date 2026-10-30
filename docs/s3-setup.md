@@ -1,83 +1,108 @@
 # AWS S3 setup
 
-Instructors upload course videos and cover images straight from the browser to S3 using
-short-lived presigned URLs (`lib/s3.ts`, `lib/actions/uploads.ts`). Until the variables below
-are filled in, the upload buttons stay hidden and instructors paste links instead.
+Instructors upload course cover images (and lesson videos) straight from the browser to S3 using
+short-lived presigned URLs (`lib/s3.ts`, `lib/actions/uploads.ts`). Until the variables below are
+filled in, the cover image drop zone is disabled and instructors paste links instead.
 
-## 1. Create the bucket
+How it works:
 
-Create a bucket (for example `mlimalms-media`) in your preferred region, e.g. `af-south-1` (Cape Town).
-Files are stored under `uploads/<userId>/images/` and `uploads/<userId>/videos/`.
+1. The instructor drops an image on the drop zone (`components/file-uploader/uploader.tsx`).
+2. The `createUploadUrl` server action checks the user, the Arcjet rate limit, the file type and
+   size, and returns a presigned `PUT` URL valid for 10 minutes.
+3. The browser uploads the file directly to S3 and shows progress. Nothing passes through our server.
+4. The public URL is saved on the course as `imageUrl`.
 
-## 2. Allow browser uploads (CORS)
+Files are stored as:
 
-Bucket → Permissions → Cross-origin resource sharing (CORS):
-
-```json
-[
-  {
-    "AllowedOrigins": ["http://localhost:3000", "https://your-domain.com"],
-    "AllowedMethods": ["PUT", "GET", "HEAD"],
-    "AllowedHeaders": ["*"],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3000
-  }
-]
+```
+<bucket>/
+└── uploads/
+    └── <userId>/
+        ├── images/<uuid>.jpg|png|webp|gif   (cover images, up to 5 MB)
+        └── videos/<uuid>.mp4|webm|mov       (lesson videos, up to 2 GB)
 ```
 
-## 3. Make uploads readable
+Limits live in `lib/upload-rules.ts`. A replaced cover image, or a deleted course or lesson,
+removes its file from S3.
 
-Videos and images are played and shown using their public URL, so `uploads/*` must be readable.
-Either:
+## 1. Create an IAM user (one time, in the AWS console)
 
-- **Recommended:** put a CloudFront distribution in front of the bucket (Origin Access Control)
-  and set `AWS_S3_PUBLIC_URL` to the CloudFront domain, or
-- turn off "Block public access" for the bucket and add this bucket policy:
+IAM → Users → **Create user**, for example `mlimalms-app`. Do not give it console access.
+Attach an inline policy with the JSON below, replacing `mlimalms-media` with your bucket name.
+It only works on that one bucket: the first statement lets `pnpm s3:setup` create and configure
+the bucket, the second lets the app upload, read and delete files.
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "PublicReadUploads",
+      "Sid": "ManageBucket",
       "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::mlimalms-media/uploads/*"
-    }
-  ]
-}
-```
-
-## 4. Create an IAM user for the app
-
-Create an IAM user with programmatic access and attach this policy, then create an access key:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
+      "Action": [
+        "s3:CreateBucket",
+        "s3:ListBucket",
+        "s3:PutBucketCORS",
+        "s3:PutBucketPolicy",
+        "s3:PutBucketPublicAccessBlock"
+      ],
+      "Resource": "arn:aws:s3:::mlimalms-media"
+    },
     {
+      "Sid": "ManageUploads",
       "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:DeleteObject"],
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
       "Resource": "arn:aws:s3:::mlimalms-media/uploads/*"
     }
   ]
 }
 ```
 
-## 5. Fill in `.env`
+Then open the user → Security credentials → **Create access key** → "Application running
+outside AWS". Copy the access key ID and secret.
+
+If your account has **Block Public Access** turned on at the account level (S3 → Block Public
+Access settings for this account), turn off the two "bucket policies" options there, otherwise
+cover images cannot be shown publicly.
+
+## 2. Fill in `.env`
 
 ```
-AWS_REGION=af-south-1
-AWS_ACCESS_KEY_ID=...
+AWS_REGION=eu-west-1
+AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 AWS_S3_BUCKET=mlimalms-media
-AWS_S3_PUBLIC_URL=            # optional, e.g. https://d123.cloudfront.net
+AWS_S3_PUBLIC_URL=
 ```
 
-Restart the dev server. The **Upload** buttons appear next to the cover image and lesson video fields.
+- **Region:** `eu-west-1` (Ireland) works on every account. `af-south-1` (Cape Town) is closer
+  to Kenya but must first be enabled under Account → AWS Regions.
+- **Bucket name:** must be unique across all of AWS. If `mlimalms-media` is taken, add a suffix.
+- **AWS_S3_PUBLIC_URL:** leave empty to serve files from the bucket URL. Set it to a CloudFront
+  domain (for example `https://d123.cloudfront.net`) if you add a CDN later.
 
-Limits are in `lib/upload-rules.ts`: images up to 5 MB (jpg, png, webp, gif), videos up to 2 GB
-(mp4, webm, mov). Uploaded files are deleted from S3 when the lesson or course is deleted, or when
-a cover image is replaced.
+## 3. Run the setup script
+
+```
+pnpm s3:setup
+```
+
+It creates the bucket if needed, allows public reads for `uploads/*` only, adds CORS for
+`http://localhost:3000` and your `BETTER_AUTH_URL`, then uploads a test file through a
+presigned URL, reads it back from the public URL and deletes it. Run it again any time; it is
+safe to repeat. To add more browser origins (for example a Vercel preview domain):
+
+```
+$env:S3_CORS_ORIGINS="https://mlimalms.vercel.app"; pnpm s3:setup
+```
+
+`pnpm s3:check` runs only the upload and read test.
+
+The dev server picks up the new `.env` values on its own. Open **Instructor → New course** and
+drop an image on the cover image zone.
+
+## 4. Production (Vercel)
+
+Add the same five `AWS_*` variables under Project → Settings → Environment Variables, then run
+`pnpm s3:setup` once more with `BETTER_AUTH_URL` (or `S3_CORS_ORIGINS`) set to your production
+domain so the browser is allowed to upload from it. Redeploy.

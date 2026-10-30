@@ -6,11 +6,12 @@ import { toast } from "sonner"
 
 import type { FormState } from "@/lib/actions/courses"
 import { levelLabels } from "@/lib/course-utils"
+import { toRichTextHtml } from "@/lib/rich-text"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { FileUploadField } from "@/components/courses/file-upload-field"
+import { Uploader } from "@/components/file-uploader/uploader"
+import { RichTextEditor } from "@/components/rich-text-editor/editor"
 
 export const selectClassName =
   "h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
@@ -69,13 +70,11 @@ export function CourseForm({
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="description">Description</Label>
-        <Textarea
+        <RichTextEditor
           id="description"
           name="description"
-          rows={6}
-          defaultValue={course?.description}
+          defaultValue={toRichTextHtml(course?.description)}
           placeholder="What will students learn? Who is this course for? What do they need before starting?"
-          required
         />
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
@@ -132,12 +131,11 @@ export function CourseForm({
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="imageUrl">Cover image (optional)</Label>
-        <FileUploadField
+        <Uploader
           id="imageUrl"
           name="imageUrl"
           kind="image"
           defaultValue={course?.imageUrl ?? ""}
-          placeholder="https://..."
           uploadsEnabled={uploadsEnabled}
         />
       </div>

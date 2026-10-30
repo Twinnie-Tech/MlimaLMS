@@ -127,6 +127,14 @@
   html {
     @apply font-sans;
     scroll-behavior: smooth;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  option,
+  optgroup {
+    @apply bg-popover text-popover-foreground;
   }
 }
 
@@ -171,6 +179,48 @@
     to {
       transform: scaleX(1);
     }
+  }
+}
+
+@layer components {
+  .rich-text {
+    @apply text-sm leading-relaxed;
+  }
+  .rich-text > * + * {
+    @apply mt-3;
+  }
+  .rich-text h2 {
+    @apply text-xl font-semibold tracking-tight text-foreground;
+  }
+  .rich-text h3 {
+    @apply text-lg font-semibold text-foreground;
+  }
+  .rich-text ul {
+    @apply list-disc pl-6;
+  }
+  .rich-text ol {
+    @apply list-decimal pl-6;
+  }
+  .rich-text li > p {
+    @apply my-0.5;
+  }
+  .rich-text a {
+    @apply text-primary underline underline-offset-4;
+  }
+  .rich-text blockquote {
+    @apply border-l-4 border-border pl-4 text-muted-foreground italic;
+  }
+  .rich-text code {
+    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em];
+  }
+  .rich-text pre {
+    @apply overflow-x-auto rounded-lg bg-muted p-3 font-mono text-[0.85em];
+  }
+  .rich-text pre code {
+    @apply bg-transparent p-0;
+  }
+  .rich-text hr {
+    @apply my-4 border-border;
   }
 }
 

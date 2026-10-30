@@ -15,6 +15,7 @@ import {
   newStudentEmail,
 } from "@/lib/emails/templates"
 import { deleteUploadedFile } from "@/lib/s3"
+import { richTextToPlain, sanitizeRichText } from "@/lib/sanitize-rich-text"
 import { requireUser } from "@/lib/session"
 
 export type FormState = { error?: string; success?: string } | undefined
@@ -28,7 +29,11 @@ const optionalUrl = z
 const courseSchema = z.object({
   title: z.string().trim().min(5, "Title must be at least 5 characters").max(120),
   subtitle: z.string().trim().max(160).optional(),
-  description: z.string().trim().min(30, "Describe your course in at least 30 characters"),
+  description: z
+    .string()
+    .transform(sanitizeRichText)
+    .refine((html) => richTextToPlain(html).length >= 30, "Describe your course in at least 30 characters")
+    .refine((html) => html.length <= 20000, "The description is too long"),
   categoryId: z.string().min(1, "Choose a category"),
   level: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL_LEVELS"]),
   language: z.string().trim().min(2).max(40),
@@ -49,7 +54,7 @@ function parseCourse(formData: FormData) {
   return courseSchema.safeParse({
     title: formData.get("title"),
     subtitle: formData.get("subtitle") || undefined,
-    description: formData.get("description"),
+    description: formData.get("description") ?? "",
     categoryId: formData.get("categoryId"),
     level: formData.get("level"),
     language: formData.get("language") || "English",

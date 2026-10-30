@@ -20,6 +20,7 @@ import {
 import { getCourseBySlug, isEnrolled } from "@/lib/queries/courses";
 import { categoryGradient, formatDuration, formatPrice, levelLabels } from "@/lib/course-utils";
 import { getSession } from "@/lib/session";
+import { sanitizeRichText } from "@/lib/sanitize-rich-text";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -156,7 +157,10 @@ async function CourseDetail({ params }: { params: Params }) {
         <div className="flex flex-col gap-12">
           <section>
             <h2 className="text-2xl font-bold tracking-tight">About this course</h2>
-            <p className="mt-4 leading-relaxed whitespace-pre-line text-muted-foreground">{course.description}</p>
+            <div
+              className="rich-text mt-4 text-base text-muted-foreground"
+              dangerouslySetInnerHTML={{ __html: sanitizeRichText(course.description) }}
+            />
           </section>
 
           <section>
